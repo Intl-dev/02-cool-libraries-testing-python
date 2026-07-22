@@ -1,7 +1,7 @@
 import requests #the library to make http/https requests
 from bs4 import BeautifulSoup #the library to scrape web pages
 
-url = "http://books.toscrape.com/" #the web page I'll be using
+url = "https://books.toscrape.com/" #the web page I'll be using
 
 response = requests.get(url) #this makes the request to the web page
 
