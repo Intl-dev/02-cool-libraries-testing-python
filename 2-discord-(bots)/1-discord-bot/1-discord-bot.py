@@ -4,6 +4,7 @@ import os
 import discord
 from discord.ext import commands
 from discord import app_commands
+from discord.types import embed
 from dotenv import load_dotenv
 import random
 
@@ -18,7 +19,7 @@ intents.message_content = True
 #this makes it so the bot can read the users of the members
 intents.members = True
 
-bot = commands.Bot(command_prefix="", intents=intents)
+bot = commands.Bot(command_prefix="!", intents=intents)
 
 #this executes the code when the bot is ready
 @bot.event
@@ -29,42 +30,36 @@ async def on_ready():
 #this executes the code when a new member joins
 @bot.event
 async def on_member_join(member): #this function welcomes new members
-    channel_name = "welcomes-bienvenidas"
-
-    channel = discord.utils.get(member.guild.text_channels, name=channel_name)
-
+    channel_id = int(os.getenv("WELCOME_CHANNEL"))
+    channel = bot.get_channel(channel_id)
     if channel:
-        await channel.send(f"sup {member.mention}. welcome to the server / Buenas {member.mention}. bienvenido al server")
+        embed = discord.Embed(title=member, description=f"Bienvenido {member.mention} al server, en este server puedes jugar buenos juegos de roblox recomendados por los miembros", color=discord.Color.green())
+        embed.set_thumbnail(url=member.display_avatar.url)
+        await channel.send(embed=embed)
 
 #these are the commands
 @bot.tree.command(name="are_you_working", description="asks Snas if he is working well")
 async def are_you_working(interaction: discord.Interaction): #this function prints a little fact, nothing interesting
-    """asks Snas if he is working well"""
     await interaction.response.send_message("I'm working i think e e e ee eeee")
 
 @bot.tree.command(name="estas_funcionando", description="asks Snas if he is working well")
 async def estas_funcionando(interaction: discord.Interaction): #this function prints a little fact too
-    """preguntarle a Snas si funciona bien"""
     await interaction.response.send_message("creo que estoy funcionando si te estoy respondiendo e e e ee eeee")
 
 @bot.tree.command(name="bluey", description="gives Snas's opinion on Bluey")
 async def bluey(interaction: discord.Interaction): #this function prints a little fact x3
-    """gives Snas's opinion on Bluey"""
     await interaction.response.send_message("Bluey's the goat")
 
 @bot.tree.command(name="how_is_your_day", description="asks Snas about his day")
 async def how_is_your_day(interaction: discord.Interaction): #this function prints a little fact x4
-    """asks Snas about his day"""
     await interaction.response.send_message("my day for now is SANSacional")
 
 @bot.tree.command(name="como_va_tu_dia", description="le pregunta a Snas como va su día")
 async def como_va_tu_dia(interaction: discord.Interaction): #this function prints a little fact x5
-    """le pregunta a Snas como va su día"""
     await interaction.response.send_message("por ahora mi día es SANSacional")
 
 @bot.tree.command(name="tell_me_a_joke", description="Snas tells you a joke")
 async def tell_me_a_joke(interaction: discord.Interaction): #this function prints a random joke from 3 available
-    """Snas tells you a joke"""
     await interaction.response.defer() #this makes discord wait for the responses of the bot
     random_joke = random.randint(1, 3)
     if random_joke == 1:
@@ -153,7 +148,38 @@ async def recomendar_juego( #this command creates an embed (something like a pos
                 ephemeral=True #this is to make the message private
             )
             return
-    await interaction.response.send_message(embed=embed)
+    pass_button = discord.ui.Button(label="Aprobar", style=discord.ButtonStyle.green)
+    deny_button = discord.ui.Button(label="Rechazar", style=discord.ButtonStyle.red)
+    view = discord.ui.View(timeout=160)
+    view.add_item(pass_button)
+    view.add_item(deny_button)
+
+    async def approve(btn_interaction: discord.Interaction):
+        await btn_interaction.response.defer()
+        good_games_channel_id = int(os.getenv("CINEMA_GAMES_CHANNEL"))
+        good_games_channel = bot.get_channel(good_games_channel_id)
+        if good_games_channel:
+            await good_games_channel.send(embed=embed)
+
+    async def deny(btn_interaction: discord.Interaction):
+        await btn_interaction.message.delete()
+
+    pass_button.callback = approve
+    deny_button.callback = deny
+
+    approbation_channel_id = int(os.getenv("APPROBATION_CHANNEL"))
+    approbation_channel = bot.get_channel(approbation_channel_id)
+    channel_id = int(os.getenv("RECOMENDATIONS_CHANNEL"))
+    channel = bot.get_channel(channel_id)
+
+    if approbation_channel:
+        if interaction.channel == channel:
+            await interaction.response.send_message(embed=embed)
+            await approbation_channel.send(embed=embed, view=view)
+        else:
+            await interaction.response.send_message("el comando /recomendar_juego solo se puede usar en el canal #recomendar-juego", ephemeral = True)
+
+
 
 #this runs the bot if it is executed in this file
 if __name__ == "__main__":
