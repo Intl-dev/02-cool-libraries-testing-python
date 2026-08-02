@@ -7,6 +7,7 @@ from discord import app_commands
 from discord.types import embed
 from dotenv import load_dotenv
 import random
+from discord.ext import tasks
 
 #this is to use the .env file that has the discord token
 load_dotenv()
@@ -19,13 +20,16 @@ intents.message_content = True
 #this makes it so the bot can read the users of the members
 intents.members = True
 
-bot = commands.Bot(command_prefix="!", intents=intents)
+bot = commands.Bot(command_prefix="", intents=intents)
 
+temporal_channels = set()
 #this executes the code when the bot is ready
 @bot.event
 async def on_ready():
     await bot.tree.sync()
+    check_players_temporal_channels.start()
     print("Snas's bot is ready.")
+
 
 #this executes the code when a new member joins
 @bot.event
@@ -160,6 +164,7 @@ async def recomendar_juego( #this command creates an embed (something like a pos
         good_games_channel = bot.get_channel(good_games_channel_id)
         if good_games_channel:
             await good_games_channel.send(embed=embed)
+            await btn_interaction.message.delete()
 
     async def deny(btn_interaction: discord.Interaction):
         await btn_interaction.message.delete()
@@ -179,6 +184,101 @@ async def recomendar_juego( #this command creates an embed (something like a pos
         else:
             await interaction.response.send_message("el comando /recomendar_juego solo se puede usar en el canal #recomendar-juego", ephemeral = True)
 
+
+@bot.tree.command(name="hostear_juego", description="sirve para hostear una partida de algún juego")
+@app_commands.describe(
+    title="nombre del juego",
+    description="descripción del juego",
+    url="url del juego",
+    image="imagen del juego"
+)
+async def hostear_juego(
+        # this command creates an embed (something like a post) where you can put a title, a description, an url and an image to recommend a game to other people
+        interaction: discord.Interaction,
+        title: str,
+        description: str,
+        url: str,
+        image: discord.Attachment,):
+    players = {interaction.user.id}
+    embed = discord.Embed(title=title, description=description, color=discord.Color.green())
+    embed.add_field(name="url", value=url, inline=False)
+    embed.add_field(name="jugadores", value=len(players), inline=False)
+    if image:
+
+        if image.content_type and image.content_type.startswith("image/"):  # if the image is an image then
+            embed.set_image(url=image)
+        else:
+            await interaction.response.send_message(
+                "archivo invalido",
+                ephemeral=True  # this is to make the message private
+            )
+            return
+
+
+    join_button = discord.ui.Button(label="anotarse", style=discord.ButtonStyle.green)
+    view = discord.ui.View(timeout=160)
+    view.add_item(join_button)
+
+    guild = interaction.guild
+    user = interaction.user
+
+    overwrites = {
+        guild.default_role: discord.PermissionOverwrite(
+            view_channel=False, connect=False
+        ),
+        user: discord.PermissionOverwrite(
+            view_channel=True, connect=True, speak=True, move_members=True
+        ),
+        guild.me: discord.PermissionOverwrite(
+            view_channel=True, connect=True, manage_channels=True
+        ),
+    }
+    channel_name = f"Canal de {user.display_name}"
+    channel = await guild.create_voice_channel(name=channel_name, overwrites=overwrites)
+    temporal_channels.add(channel.id)
+
+
+    async def anotarse(btn_interaction: discord.Interaction):
+        await btn_interaction.response.defer()
+        user = btn_interaction.user
+        if not user.id in players:
+            await channel.set_permissions(
+                user,
+                view_channel=True,
+                connect=True,
+                speak=True,
+                send_messages=True,
+            )
+            players.add(user.id)
+        else:
+            await btn_interaction.followup.send("Ya estás en la party", ephemeral=True)
+
+
+
+
+    join_button.callback = anotarse
+    channel_id = int(os.getenv("MATCH_MAKING_CHANNEL"))
+    channel = bot.get_channel(channel_id)
+
+    if interaction.channel == channel:
+        await interaction.response.send_message(embed=embed, view=view)
+    else:
+        await interaction.response.send_message("Este comando solo se puede usar en el canal #match-making", ephemeral = True)
+
+
+@tasks.loop(seconds=30)
+async def check_players_temporal_channels():
+    for channel_id in list(temporal_channels):
+        channel = bot.get_channel(channel_id)
+
+        if channel is None:
+            temporal_channels.remove(channel_id)
+            continue
+
+        if len(channel.members) == 0:
+            await channel.delete(reason="canal vacio")
+            temporal_channels.remove(channel_id)
+            continue
 
 
 #this runs the bot if it is executed in this file
