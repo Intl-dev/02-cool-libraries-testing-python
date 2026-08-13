@@ -215,7 +215,7 @@ async def hostear_juego(
             return
 
 
-    join_button = discord.ui.Button(label="anotarse", style=discord.ButtonStyle.green)
+    join_button = discord.ui.Button(label="unirse", style=discord.ButtonStyle.green)
     view = discord.ui.View(timeout=160)
     view.add_item(join_button)
 
@@ -255,7 +255,6 @@ async def hostear_juego(
 
 
 
-
     join_button.callback = anotarse
     channel_id = int(os.getenv("MATCH_MAKING_CHANNEL"))
     channel = bot.get_channel(channel_id)
@@ -266,7 +265,7 @@ async def hostear_juego(
         await interaction.response.send_message("Este comando solo se puede usar en el canal #match-making", ephemeral = True)
 
 
-@tasks.loop(seconds=30)
+@tasks.loop(seconds=60)
 async def check_players_temporal_channels():
     for channel_id in list(temporal_channels):
         channel = bot.get_channel(channel_id)
