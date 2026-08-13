@@ -220,3 +220,4 @@ __marimo__/
 #extra ones
 discloud.config
 requirements.txt
+*.db
