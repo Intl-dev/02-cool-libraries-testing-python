@@ -23,4 +23,8 @@ if option_chosen == "2":
         HP = int(input("Enter HP value: "))
         print(search(df, "Hp", HP).to_string())
 
+if option_chosen == "3":
+    pokemon_type = input("Enter pokemon type: ")
+    print(search(df, "Type1" and "Type2", pokemon_type).to_string())
+
 
